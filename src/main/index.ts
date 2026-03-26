@@ -1,13 +1,17 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 700,
+    width: 860,
+    height: 720,
+    minWidth: 480,
+    minHeight: 520,
     show: false,
     autoHideMenuBar: true,
+    title: 'Snake',
+    backgroundColor: '#111111',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -22,6 +26,11 @@ function createWindow(): void {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
+
+  // Remove the default menu in production
+  if (!is.dev) {
+    Menu.setApplicationMenu(null)
+  }
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
