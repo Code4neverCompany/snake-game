@@ -29,9 +29,10 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        { "target": "zip", "arch": ["x64"] }
       ],
-      "icon": "resources/icon.ico"
+      "icon": "resources/icon.png",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": [
