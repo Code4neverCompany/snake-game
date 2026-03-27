@@ -41,17 +41,27 @@ export default function GameCanvas({
     const audio = new AudioSystem()
     audioRef.current = audio
 
-    // PixiJS application — forceCanvas ensures it works even when WebGL is unavailable
+    const containerW = containerRef.current.clientWidth || 800
+    const containerH = containerRef.current.clientHeight || 600
+
+    // PixiJS application — forceCanvas bypasses WebGL (unavailable without GPU).
+    // Stop the auto-render ticker so we drive rendering manually from the game loop,
+    // which prevents double-render and ensures state is always current when drawn.
     const app = new Application({
-      width: containerRef.current.clientWidth || 800,
-      height: containerRef.current.clientHeight || 600,
+      width: containerW,
+      height: containerH,
       backgroundColor: 0x111111,
       antialias: false,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
+      resolution: 1,
+      autoDensity: false,
       forceCanvas: true
     })
-    containerRef.current.appendChild(app.view as HTMLCanvasElement)
+    app.ticker.stop()
+
+    const canvas = app.view as HTMLCanvasElement
+    canvas.style.width = `${containerW}px`
+    canvas.style.height = `${containerH}px`
+    containerRef.current.appendChild(canvas)
 
     // Rendering layer
     const renderer = new SnakeRenderer(app, config)
@@ -104,6 +114,9 @@ export default function GameCanvas({
       },
       onRender: (interpolation) => {
         renderer.render(state, paused, interpolation)
+        // Explicitly flush the stage to the canvas — required when the PixiJS
+        // auto-render ticker is stopped (we drive rendering from the game loop).
+        app.renderer.render(app.stage)
       }
     })
     loop.start()
@@ -114,6 +127,8 @@ export default function GameCanvas({
       const w = containerRef.current.clientWidth
       const h = containerRef.current.clientHeight
       app.renderer.resize(w, h)
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
       renderer.resize()
     }
     window.addEventListener('resize', handleResize)
