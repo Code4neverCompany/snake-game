@@ -41,14 +41,15 @@ export default function GameCanvas({
     const audio = new AudioSystem()
     audioRef.current = audio
 
-    // PixiJS application
+    // PixiJS application — forceCanvas ensures it works even when WebGL is unavailable
     const app = new Application({
       width: containerRef.current.clientWidth || 800,
       height: containerRef.current.clientHeight || 600,
       backgroundColor: 0x111111,
       antialias: false,
       resolution: window.devicePixelRatio || 1,
-      autoDensity: true
+      autoDensity: true,
+      forceCanvas: true
     })
     containerRef.current.appendChild(app.view as HTMLCanvasElement)
 

@@ -2,6 +2,13 @@ import { app, shell, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
+// Disable GPU hardware acceleration — prevents GPU process crash (error_code=18)
+// on machines where the GPU subprocess cannot launch (VMs, restricted environments, WSL hosts).
+// Chromium falls back to its software rasterizer (SwiftShader); PixiJS uses Canvas.
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-gpu')
+app.disableHardwareAcceleration()
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 860,
