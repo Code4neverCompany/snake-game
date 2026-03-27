@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake — PC Game</title>
+  <style>
+    :root {
+      --green: #4ade80;
+      --green-dim: #22c55e;
+      --green-glow: rgba(74,222,128,0.35);
+      --red: #f87171;
+      --bg: #080b10;
+      --surface: #0f1520;
+      --border: #1a2535;
+      --text: #e2e8f0;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,222,128,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 80% 80%, rgba(248,113,113,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.25);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 32px;
+    }
+
+    .badge-dot {
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .hero-title {
+      font-size: clamp(5rem, 18vw, 12rem);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      color: var(--green);
+      text-shadow: 0 0 60px var(--green-glow), 0 0 120px rgba(74,222,128,0.15);
+      line-height: 1;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 48px;
+    }
+
+    .hero-sub strong { color: var(--text); }
+
+    .cta-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--green);
+      color: #050a0e;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 24px rgba(74,222,128,0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px rgba(74,222,128,0.5);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 14px 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    /* ── CANVAS PREVIEW ── */
+    .preview-wrap {
+      margin-top: 72px;
+      position: relative;
+      width: min(560px, 90vw);
+    }
+
+    .preview-frame {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(74,222,128,0.08), 0 40px 80px rgba(0,0,0,0.6);
+    }
+
+    .preview-bar {
+      background: #0a0f1a;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red   { background: #ff5f57; }
+    .dot-yellow{ background: #ffbd2e; }
+    .dot-green { background: #28c840; }
+
+    .preview-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    canvas#demo {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4/3;
+    }
+
+    /* ── FEATURES ── */
+    .section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 100px 24px;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 560px;
+      margin-bottom: 64px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(74,222,128,0.3);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .feature-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .feature-desc {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ── CONTROLS ── */
+    .controls-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 32px;
+    }
+
+    .control-group h3 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .key-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .key-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .key-action { color: var(--muted); font-size: 0.9rem; }
+
+    .key-badge {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    kbd {
+      background: #1a2535;
+      border: 1px solid #2d3f55;
+      border-bottom-width: 3px;
+      border-radius: 5px;
+      padding: 3px 9px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* ── INSTALL ── */
+    .install-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .install-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(74,222,128,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .install-card h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .install-card p {
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+      max-width: 480px;
+      margin: 0 auto 40px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+
+    .step-num {
+      width: 28px; height: 28px;
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .step-text { color: var(--text); font-size: 0.9rem; line-height: 1.4; }
+    .step-text span { color: var(--muted); font-size: 0.82rem; display: block; margin-top: 2px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--green); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── SNAKE DEMO CANVAS ── */
+    #demo { background: #111; }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="grid-bg"></div>
+
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Alpha v0.1.0 — Now Available
+    </div>
+
+    <h1 class="hero-title">SNAKE</h1>
+
+    <p class="hero-sub">
+      A <strong>modern Snake game for PC</strong> — built with Electron and React.
+      Silky-smooth gameplay, controller support, and a clean minimal aesthetic.
+      No install, no launcher. Just unzip and play.
+    </p>
+
+    <div class="cta-group">
+      <a class="btn-primary" href="https://github.com/Code4neverCompany/snake-game/releases/download/v0.1.0-alpha/Snake-0.1.0-win.zip">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download for Windows
+      </a>
+      <a class="btn-secondary" href="https://github.com/Code4neverCompany/snake-game" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.71c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="preview-wrap">
+      <div class="preview-frame">
+        <div class="preview-bar">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          <span class="preview-title">Snake.exe</span>
+        </div>
+        <canvas id="demo" width="560" height="420"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Everything you need,<br>nothing you don't</h2>
+    <p class="section-sub">Built from scratch with performance and simplicity in mind. No bloat, no launcher, no account required.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">⚡</span>
+        <h3 class="feature-title">Fixed-Timestep Game Loop</h3>
+        <p class="feature-desc">Physics and logic run at a fixed 8 ticks/sec while rendering interpolates for buttery-smooth 60 fps visuals.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🎮</span>
+        <h3 class="feature-title">Gamepad Support</h3>
+        <p class="feature-desc">Full controller support via the Web Gamepad API. Keyboard (arrows + WASD) and touch swipe also work out of the box.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🎨</span>
+        <h3 class="feature-title">Native Canvas2D Renderer</h3>
+        <p class="feature-desc">Custom renderer using native Canvas2D — rounded segments, animated eyes, food pulse glow. No GPU required.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔊</span>
+        <h3 class="feature-title">Web Audio Sound Effects</h3>
+        <p class="feature-desc">Procedurally generated sound effects via Web Audio API. Mute toggle always accessible in-game.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📦</span>
+        <h3 class="feature-title">Zero Install</h3>
+        <p class="feature-desc">Just unzip and double-click Snake.exe. No installer, no admin rights, no dependencies.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🏆</span>
+        <h3 class="feature-title">High Score Tracking</h3>
+        <p class="feature-desc">In-session high score persisted across rounds. New high score celebration on the game-over screen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTROLS -->
+  <section class="controls-section">
+    <div class="section">
+      <p class="section-label">Controls</p>
+      <h2 class="section-title">Play your way</h2>
+      <p class="section-sub">Mouse-free by design. Every action is reachable from keyboard, controller, or touch.</p>
+
+      <div class="controls-grid">
+        <div class="control-group">
+          <h3>Movement</h3>
+          <div class="key-list">
+            <div class="key-row">
+              <span class="key-action">Move Up</span>
+              <span class="key-badge"><kbd>↑</kbd> <kbd>W</kbd></span>
+            </div>
+            <div class="key-row">
+              <span class="key-action">Move Down</span>
+              <span class="key-badge"><kbd>↓</kbd> <kbd>S</kbd></span>
+            </div>
+            <div class="key-row">
+              <span class="key-action">Move Left</span>
+              <span class="key-badge"><kbd>←</kbd> <kbd>A</kbd></span>
+            </div>
+            <div class="key-row">
+              <span class="key-action">Move Right</span>
+              <span class="key-badge"><kbd>→</kbd> <kbd>D</kbd></span>
+            </div>
+          </div>
+        </div>
+        <div class="control-group">
+          <h3>Game</h3>
+          <div class="key-list">
+            <div class="key-row">
+              <span class="key-action">Pause / Resume</span>
+              <span class="key-badge"><kbd>Esc</kbd> <kbd>P</kbd></span>
+            </div>
+            <div class="key-row">
+              <span class="key-action">Mute Audio</span>
+              <span class="key-badge"><kbd>🔊 button</kbd></span>
+            </div>
+          </div>
+        </div>
+        <div class="control-group">
+          <h3>Gamepad</h3>
+          <div class="key-list">
+            <div class="key-row">
+              <span class="key-action">Move</span>
+              <span class="key-badge"><kbd>D-pad</kbd></span>
+            </div>
+            <div class="key-row">
+              <span class="key-action">Move (analog)</span>
+              <span class="key-badge"><kbd>Left stick</kbd></span>
+            </div>
+          </div>
+        </div>
+        <div class="control-group">
+          <h3>Touch</h3>
+          <div class="key-list">
+            <div class="key-row">
+              <span class="key-action">Swipe to move</span>
+              <span class="key-badge"><kbd>↑ ↓ ← →</kbd></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section class="section">
+    <div class="install-card">
+      <p class="section-label" style="margin-bottom:16px">Download</p>
+      <h2>Ready to play?</h2>
+      <p>Windows x64 · 107 MB · No install required<br>Alpha release — more platforms coming soon</p>
+
+      <div class="install-steps">
+        <div class="step">
+          <span class="step-num">1</span>
+          <div class="step-text">Download the zip
+            <span>Snake-0.1.0-win.zip · 107 MB</span>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <div class="step-text">Extract anywhere
+            <span>Right-click → Extract All</span>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <div class="step-text">Run Snake.exe
+            <span>No install, no admin rights needed</span>
+          </div>
+        </div>
+      </div>
+
+      <a class="btn-primary" href="https://github.com/Code4neverCompany/snake-game/releases/download/v0.1.0-alpha/Snake-0.1.0-win.zip">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download Snake v0.1.0-alpha
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>
+      Built with Electron · React · Canvas2D ·
+      <a href="https://github.com/Code4neverCompany/snake-game" target="_blank">View source on GitHub</a>
+      · Released under MIT
+    </p>
+  </footer>
+
+  <script>
+    // Live animated snake demo in the hero canvas
+    const canvas = document.getElementById('demo')
+    const ctx = canvas.getContext('2d')
+    const W = canvas.width, H = canvas.height
+    const GRID = 20, COLS = Math.floor(W / GRID), ROWS = Math.floor(H / GRID)
+    const OX = Math.floor((W - GRID * COLS) / 2)
+    const OY = Math.floor((H - GRID * ROWS) / 2)
+
+    let snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10},{x:7,y:10}]
+    let dir = {x:1,y:0}
+    let food = {x:15,y:10}
+    let score = 0
+    let pulse = 0
+
+    function rndFood() {
+      let pos
+      do {
+        pos = {x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS)}
+      } while (snake.some(s => s.x===pos.x && s.y===pos.y))
+      return pos
+    }
+
+    function autoSteer() {
+      const head = snake[0]
+      const candidates = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}]
+        .filter(d => !(d.x===-dir.x && d.y===-dir.y))
+        .filter(d => {
+          const nx=head.x+d.x, ny=head.y+d.y
+          return nx>=0&&nx<COLS&&ny>=0&&ny<ROWS && !snake.some(s=>s.x===nx&&s.y===ny)
+        })
+      if (!candidates.length) return
+      candidates.sort((a,b) => {
+        const da = Math.abs(head.x+a.x-food.x)+Math.abs(head.y+a.y-food.y)
+        const db = Math.abs(head.x+b.x-food.x)+Math.abs(head.y+b.y-food.y)
+        return da-db
+      })
+      dir = candidates[0]
+    }
+
+    let tick = 0
+    function update() {
+      tick++
+      if (tick % 6 !== 0) return
+      autoSteer()
+      const head = {x: snake[0].x+dir.x, y: snake[0].y+dir.y}
+      if (head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some(s=>s.x===head.x&&s.y===head.y)) {
+        snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}]; dir={x:1,y:0}; score=0; return
+      }
+      snake.unshift(head)
+      if (head.x===food.x && head.y===food.y) { score++; food=rndFood() }
+      else snake.pop()
+    }
+
+    function drawRoundRect(x,y,w,h,r) {
+      ctx.beginPath()
+      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y)
+      ctx.arcTo(x+w,y,x+w,y+r,r); ctx.lineTo(x+w,y+h-r)
+      ctx.arcTo(x+w,y+h,x+w-r,y+h,r); ctx.lineTo(x+r,y+h)
+      ctx.arcTo(x,y+h,x,y+h-r,r); ctx.lineTo(x,y+r)
+      ctx.arcTo(x,y,x+r,y,r); ctx.closePath()
+      ctx.fill(); ctx.stroke()
+    }
+
+    function draw() {
+      pulse = (pulse + 0.04) % (Math.PI*2)
+
+      // Background
+      ctx.fillStyle = '#111111'
+      ctx.fillRect(0,0,W,H)
+
+      // Grid
+      ctx.fillStyle = '#1a1a2e'
+      ctx.fillRect(OX,OY,GRID*COLS,GRID*ROWS)
+
+      ctx.save()
+      ctx.globalAlpha = 0.4
+      ctx.strokeStyle = '#16213e'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      for (let x=0;x<=COLS;x++) { ctx.moveTo(OX+x*GRID,OY); ctx.lineTo(OX+x*GRID,OY+GRID*ROWS) }
+      for (let y=0;y<=ROWS;y++) { ctx.moveTo(OX,OY+y*GRID); ctx.lineTo(OX+GRID*COLS,OY+y*GRID) }
+      ctx.stroke()
+      ctx.restore()
+
+      // Food
+      const fx=OX+food.x*GRID, fy=OY+food.y*GRID
+      const r = GRID*0.35 + Math.sin(pulse)*GRID*0.04
+      ctx.fillStyle = 'rgba(252,165,165,0.2)'
+      ctx.beginPath(); ctx.arc(fx+GRID/2,fy+GRID/2,r+GRID*0.1,0,Math.PI*2); ctx.fill()
+      ctx.fillStyle = '#f87171'
+      ctx.beginPath(); ctx.arc(fx+GRID/2,fy+GRID/2,r,0,Math.PI*2); ctx.fill()
+
+      // Snake
+      snake.forEach((seg,i) => {
+        const sx=OX+seg.x*GRID, sy=OY+seg.y*GRID
+        ctx.fillStyle = i===0 ? '#4ade80' : '#22c55e'
+        ctx.strokeStyle = '#166534'
+        ctx.lineWidth = 1
+        drawRoundRect(sx+1,sy+1,GRID-2,GRID-2,i===0?4:2)
+        if (i===0) {
+          const er=Math.max(2,GRID*0.08), pr=Math.max(1,GRID*0.04)
+          const eyes = dir.x===1 ? [{x:sx+GRID*.75,y:sy+GRID*.3},{x:sx+GRID*.75,y:sy+GRID*.7}]
+            : dir.x===-1 ? [{x:sx+GRID*.25,y:sy+GRID*.3},{x:sx+GRID*.25,y:sy+GRID*.7}]
+            : dir.y===-1 ? [{x:sx+GRID*.3,y:sy+GRID*.25},{x:sx+GRID*.7,y:sy+GRID*.25}]
+            : [{x:sx+GRID*.3,y:sy+GRID*.75},{x:sx+GRID*.7,y:sy+GRID*.75}]
+          eyes.forEach(e => {
+            ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(e.x,e.y,er,0,Math.PI*2); ctx.fill()
+            ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(e.x,e.y,pr,0,Math.PI*2); ctx.fill()
+          })
+        }
+      })
+
+      // Score
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 14px monospace'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(`Score: ${score}`, 10, 14)
+    }
+
+    function loop() {
+      update()
+      draw()
+      requestAnimationFrame(loop)
+    }
+    loop()
+  </script>
+</body>
+</html>
