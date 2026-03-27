@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Application } from 'pixi.js'
 import { DEFAULT_CONFIG } from './engine/types'
 import { createInitialState, queueDirection, tick } from './engine/snakeLogic'
 import { GameLoop } from './engine/gameLoop'
@@ -44,27 +43,15 @@ export default function GameCanvas({
     const containerW = containerRef.current.clientWidth || 800
     const containerH = containerRef.current.clientHeight || 600
 
-    // PixiJS application — forceCanvas bypasses WebGL (unavailable without GPU).
-    // Stop the auto-render ticker so we drive rendering manually from the game loop,
-    // which prevents double-render and ensures state is always current when drawn.
-    const app = new Application({
-      width: containerW,
-      height: containerH,
-      backgroundColor: 0x111111,
-      antialias: false,
-      resolution: 1,
-      autoDensity: false,
-      forceCanvas: true
-    })
-    app.ticker.stop()
-
-    const canvas = app.view as HTMLCanvasElement
+    // Native Canvas2D — no WebGL/GPU required.
+    const canvas = document.createElement('canvas')
+    canvas.width = containerW
+    canvas.height = containerH
     canvas.style.width = `${containerW}px`
     canvas.style.height = `${containerH}px`
     containerRef.current.appendChild(canvas)
 
-    // Rendering layer
-    const renderer = new SnakeRenderer(app, config)
+    const renderer = new SnakeRenderer(canvas, config)
 
     // Input system
     const input = new InputHandler({
@@ -107,16 +94,12 @@ export default function GameCanvas({
             } else {
               audio.playGameOver()
             }
-            // Small delay so the death frame renders before transitioning
             setTimeout(() => onGameOver(event.score, isHS), 800)
           }
         }
       },
       onRender: (interpolation) => {
         renderer.render(state, paused, interpolation)
-        // Explicitly flush the stage to the canvas — required when the PixiJS
-        // auto-render ticker is stopped (we drive rendering from the game loop).
-        app.renderer.render(app.stage)
       }
     })
     loop.start()
@@ -126,7 +109,8 @@ export default function GameCanvas({
       if (!containerRef.current) return
       const w = containerRef.current.clientWidth
       const h = containerRef.current.clientHeight
-      app.renderer.resize(w, h)
+      canvas.width = w
+      canvas.height = h
       canvas.style.width = `${w}px`
       canvas.style.height = `${h}px`
       renderer.resize()
@@ -138,7 +122,7 @@ export default function GameCanvas({
       input.detach()
       window.removeEventListener('resize', handleResize)
       renderer.destroy()
-      app.destroy(true, { children: true })
+      canvas.remove()
       audio.destroy()
       audioRef.current = null
     }
